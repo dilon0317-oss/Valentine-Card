@@ -8,7 +8,7 @@
     :root { font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif; }
     body {
       margin: 0;
-      height: 100vh;
+      min-height: 100vh;
       display: grid;
       place-items: center;
       background: radial-gradient(circle at top, #ffe3ef, #fff);
@@ -24,9 +24,11 @@
       text-align: center;
       position: relative;
       backdrop-filter: blur(6px);
+      overflow: hidden; /* keeps No button visually contained */
     }
     h1 { margin: 0 0 10px; font-size: 34px; }
     p { margin: 0 0 22px; font-size: 16px; opacity: 0.85; }
+
     .buttons {
       display: flex;
       justify-content: center;
@@ -35,19 +37,23 @@
       position: relative;
       min-height: 52px;
     }
+
     button {
       border: none;
       border-radius: 999px;
       padding: 12px 18px;
       font-size: 16px;
       cursor: pointer;
-      transition: transform 0.1s ease;
+      transition: transform 0.1s ease, opacity 0.2s ease;
+      user-select: none;
+      -webkit-tap-highlight-color: transparent;
+      touch-action: manipulation;
     }
     button:active { transform: scale(0.98); }
     #yesBtn { background: #ff3b7a; color: white; }
     #noBtn  { background: #e9e9ef; color: #111; }
 
-    /* the “no” button will be positioned absolutely during dodge mode */
+    /* No button becomes absolute ONLY after we arm dodge mode */
     #noBtn.dodge {
       position: absolute;
       left: 50%;
@@ -91,21 +97,18 @@
       text-align: center;
       box-shadow: 0 18px 60px rgba(0,0,0,0.35);
     }
-
-    /* We keep the image element but we will hide it for the date picker version */
-    .modal img {
-      width: 100%;
-      max-height: 70vh;
-      object-fit: contain;
-      border-radius: 14px;
-      border: 1px solid rgba(0,0,0,0.08);
-      display: none;
-    }
+    .modal img { display: none; }
 
     .modal h2 { margin: 12px 0 6px; }
     .modal small { opacity: 0.9; display: block; }
 
-    .closeRow { margin-top: 14px; display: flex; justify-content: center; gap: 10px; flex-wrap: wrap; }
+    .closeRow {
+      margin-top: 14px;
+      display: flex;
+      justify-content: center;
+      gap: 10px;
+      flex-wrap: wrap;
+    }
     .closeRow button { background: #111; color: #fff; }
     a { text-decoration: none; }
 
@@ -119,10 +122,7 @@
       border-radius: 14px;
       padding: 14px;
     }
-    .menuTitle {
-      font-weight: 700;
-      margin-bottom: 10px;
-    }
+    .menuTitle { font-weight: 700; margin-bottom: 10px; }
     .menuItem {
       display: flex;
       gap: 10px;
@@ -154,26 +154,37 @@
       background: rgba(0,0,0,0.04);
       border: 1px solid rgba(0,0,0,0.06);
     }
+
+    .smsBtn {
+      display: inline-block;
+      margin-top: 10px;
+      padding: 10px 14px;
+      border-radius: 999px;
+      background: #111;
+      color: #fff;
+      text-decoration: none;
+      text-align: center;
+    }
   </style>
 </head>
+
 <body>
   <div class="card" id="card">
     <div class="hearts" id="hearts"></div>
 
     <h1>Will you be my Valentine? 💘</h1>
-    <p>I made a very serious, extremely professional website to ask you this.</p>
+    <p>Select <b>Yes</b> if you love me. Select <b>No</b> if you enjoy lying to yourself.</p>
 
     <div class="buttons">
       <button id="yesBtn">Yes</button>
-      <button id="noBtn" class="dodge">No</button>
+      <button id="noBtn">No</button>
     </div>
   </div>
 
   <div class="overlay" id="overlay">
     <div class="modal">
-      <img id="funnyImg" alt="Surprise" />
-      <h2 id="modalTitle">Yayyyyy 💖</h2>
-      <small id="modalBody">Best choice ever made in the history of choices.</small>
+      <h2 id="modalTitle">You said YES 💘</h2>
+      <small id="modalBody">Loading extremely important Valentine paperwork...</small>
 
       <div class="closeRow">
         <button id="closeBtn">Close</button>
@@ -182,41 +193,29 @@
   </div>
 
   <script>
+    // ========= CHANGE THIS =========
+    // Use country code. Example: +17025551234
+    const YOUR_PHONE = "+17024692757";
+    // ===============================
+
     const card = document.getElementById("card");
     const noBtn = document.getElementById("noBtn");
     const yesBtn = document.getElementById("yesBtn");
     const hearts = document.getElementById("hearts");
     const overlay = document.getElementById("overlay");
     const closeBtn = document.getElementById("closeBtn");
-
     const modalTitle = document.getElementById("modalTitle");
     const modalBody = document.getElementById("modalBody");
-    const funnyImg = document.getElementById("funnyImg"); // kept, but hidden
 
-    // Move the No button somewhere else inside the card
-    function dodge() {
-      const rect = card.getBoundingClientRect();
+    // Detect iOS for sms: link formatting
+    const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream;
 
-      // Keep it inside card padding
-      const pad = 18;
-      const maxX = rect.width - noBtn.offsetWidth - pad;
-      const maxY = rect.height - noBtn.offsetHeight - pad;
-
-      const x = Math.max(pad, Math.random() * maxX);
-      const y = Math.max(pad + 90, Math.random() * maxY); // avoids the title area
-
-      noBtn.style.left = x + "px";
-      noBtn.style.top = y + "px";
-      noBtn.style.transform = "translate(0,0)";
+    function buildSmsLink(message) {
+      const body = encodeURIComponent(message);
+      // iOS uses &body=, many Android use ?body=
+      const joiner = isIOS ? "&" : "?";
+      return `sms:${YOUR_PHONE}${joiner}body=${body}`;
     }
-
-    // Trigger dodge on hover and on attempted click
-    noBtn.addEventListener("mouseenter", dodge);
-    noBtn.addEventListener("mousedown", dodge);
-    noBtn.addEventListener("touchstart", (e) => {
-      e.preventDefault();
-      dodge();
-    }, { passive: false });
 
     // Heart confetti
     function spawnHeart() {
@@ -239,13 +238,48 @@
       }, 80);
     }
 
-    // YES: show the choose-your-date menu (no GIF needed)
+    // NO button dodge logic (stays inside the card)
+    function dodge() {
+      const rect = card.getBoundingClientRect();
+      const pad = 18;
+
+      const maxX = rect.width - noBtn.offsetWidth - pad;
+      const maxY = rect.height - noBtn.offsetHeight - pad;
+
+      const minY = 120; // keeps it away from the headline area
+      const minX = pad;
+
+      const x = Math.max(minX, Math.random() * maxX);
+      const y = Math.max(minY, Math.random() * maxY);
+
+      noBtn.classList.add("dodge");
+      noBtn.style.left = x + "px";
+      noBtn.style.top = y + "px";
+      noBtn.style.transform = "translate(0,0)";
+    }
+
+    // Start normal for a moment, then arm dodge mode
+    let dodgeArmed = false;
+    setTimeout(() => {
+      dodgeArmed = true;
+      noBtn.classList.add("dodge");
+      dodge();
+    }, 1100);
+
+    // Desktop hover/click
+    noBtn.addEventListener("mouseenter", () => { if (dodgeArmed) dodge(); });
+    noBtn.addEventListener("mousedown", () => { if (dodgeArmed) dodge(); });
+
+    // Mobile touch: dodge when they try to tap it
+    noBtn.addEventListener("touchstart", (e) => {
+      if (!dodgeArmed) return;
+      e.preventDefault();
+      dodge();
+    }, { passive: false });
+
+    // YES: date menu + SMS button
     yesBtn.addEventListener("click", () => {
       celebrate();
-
-      // Hide image for this version
-      funnyImg.style.display = "none";
-      funnyImg.removeAttribute("src");
 
       modalTitle.textContent = "You said YES 💘";
       modalBody.innerHTML = `
@@ -264,7 +298,7 @@
 
           <label class="menuItem">
             <input type="radio" name="date" value="Snacks + a walk + yapping time 🍿🚶" />
-            <span><b>Snacks + a walk + yapping time</b><br/>Quality time, plus we get fresh air credits.</span>
+            <span><b>Snacks + a walk + yapping time</b><br/>Quality time + fresh air credits.</span>
           </label>
 
           <button id="confirmDate" class="confirmBtn">Confirm my choice</button>
@@ -275,21 +309,25 @@
 
       overlay.style.display = "grid";
 
-      // Wire up the confirm button after the HTML is injected
       setTimeout(() => {
         const confirmBtn = document.getElementById("confirmDate");
         const finalMsg = document.getElementById("finalMsg");
-
         if (!confirmBtn || !finalMsg) return;
 
         confirmBtn.addEventListener("click", () => {
           const selected = document.querySelector('input[name="date"]:checked');
           const choice = selected ? selected.value : "a date";
 
+          const smsMessage =
+            `I choose: ${choice}\n\n(Yes, I officially clicked YES.)`;
+
+          const smsLink = buildSmsLink(smsMessage);
+
           finalMsg.style.display = "block";
           finalMsg.innerHTML = `
             <b>Perfect.</b> I’m planning <b>${choice}</b> 😌💖<br><br>
-            I love you.
+            I love you.<br><br>
+            <a class="smsBtn" href="${smsLink}">Text you my choice 💬</a>
           `;
 
           confirmBtn.disabled = true;
@@ -305,9 +343,6 @@
     overlay.addEventListener("click", (e) => {
       if (e.target === overlay) overlay.style.display = "none";
     });
-
-    // Give the No button an initial random position
-    setTimeout(dodge, 250);
   </script>
 </body>
 </html>
