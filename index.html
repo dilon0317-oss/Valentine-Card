@@ -6,6 +6,7 @@
   <title>Be My Valentine?</title>
   <style>
     :root { font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif; }
+
     body {
       margin: 0;
       min-height: 100vh;
@@ -14,6 +15,7 @@
       background: radial-gradient(circle at top, #ffe3ef, #fff);
       overflow: hidden;
     }
+
     .card {
       width: min(520px, 92vw);
       background: rgba(255,255,255,0.85);
@@ -22,12 +24,13 @@
       box-shadow: 0 14px 40px rgba(0,0,0,0.12);
       padding: 28px;
       text-align: center;
-      position: relative;
+      position: relative; /* keeps No button inside card when absolute */
       backdrop-filter: blur(6px);
-      overflow: hidden; /* keeps No button visually contained */
+      overflow: hidden;   /* extra safety so nothing escapes visually */
     }
+
     h1 { margin: 0 0 10px; font-size: 34px; }
-    p { margin: 0 0 22px; font-size: 16px; opacity: 0.85; }
+    p  { margin: 0 0 22px; font-size: 16px; opacity: 0.85; }
 
     .buttons {
       display: flex;
@@ -50,15 +53,14 @@
       touch-action: manipulation;
     }
     button:active { transform: scale(0.98); }
-    #yesBtn { background: #ff3b7a; color: white; }
+
+    #yesBtn { background: #ff3b7a; color: #fff; }
     #noBtn  { background: #e9e9ef; color: #111; }
 
-    /* No button becomes absolute ONLY after we arm dodge mode */
+    /* No button becomes absolute ONLY after first touch/click */
     #noBtn.dodge {
       position: absolute;
-      left: 50%;
-      top: 50%;
-      transform: translate(-50%, -50%);
+      transform: translate(0,0);
     }
 
     .hearts {
@@ -77,8 +79,8 @@
     }
     @keyframes floatUp {
       from { transform: translateY(20px); opacity: 0.0; }
-      10% { opacity: 0.85; }
-      to { transform: translateY(-260px); opacity: 0.0; }
+      10%  { opacity: 0.85; }
+      to   { transform: translateY(-260px); opacity: 0.0; }
     }
 
     .overlay {
@@ -89,6 +91,7 @@
       place-items: center;
       padding: 18px;
     }
+
     .modal {
       width: min(720px, 94vw);
       background: white;
@@ -97,7 +100,6 @@
       text-align: center;
       box-shadow: 0 18px 60px rgba(0,0,0,0.35);
     }
-    .modal img { display: none; }
 
     .modal h2 { margin: 12px 0 6px; }
     .modal small { opacity: 0.9; display: block; }
@@ -110,6 +112,7 @@
       flex-wrap: wrap;
     }
     .closeRow button { background: #111; color: #fff; }
+
     a { text-decoration: none; }
 
     /* Mini menu styles */
@@ -122,7 +125,9 @@
       border-radius: 14px;
       padding: 14px;
     }
+
     .menuTitle { font-weight: 700; margin-bottom: 10px; }
+
     .menuItem {
       display: flex;
       gap: 10px;
@@ -133,6 +138,7 @@
       background: rgba(255,255,255,0.85);
       border: 1px solid rgba(0,0,0,0.06);
     }
+
     .menuItem input { margin-top: 3px; }
     .menuItem span { line-height: 1.25; }
 
@@ -147,6 +153,7 @@
       background: #ff3b7a;
       color: #fff;
     }
+
     .finalMsg {
       margin-top: 12px;
       padding: 12px;
@@ -175,7 +182,7 @@
     <h1>Will you be my Valentine? 💘</h1>
     <p>Select <b>Yes</b> if you love me. Select <b>No</b> if you enjoy lying to yourself.</p>
 
-    <div class="buttons">
+    <div class="buttons" id="btnRow">
       <button id="yesBtn">Yes</button>
       <button id="noBtn">No</button>
     </div>
@@ -195,10 +202,11 @@
   <script>
     // ========= CHANGE THIS =========
     // Use country code. Example: +17025551234
-    const YOUR_PHONE = "+17024692757";
+    const YOUR_PHONE = "+1PUT_YOUR_NUMBER_HERE";
     // ===============================
 
     const card = document.getElementById("card");
+    const btnRow = document.getElementById("btnRow");
     const noBtn = document.getElementById("noBtn");
     const yesBtn = document.getElementById("yesBtn");
     const hearts = document.getElementById("hearts");
@@ -212,7 +220,6 @@
 
     function buildSmsLink(message) {
       const body = encodeURIComponent(message);
-      // iOS uses &body=, many Android use ?body=
       const joiner = isIOS ? "&" : "?";
       return `sms:${YOUR_PHONE}${joiner}body=${body}`;
     }
@@ -238,7 +245,7 @@
       }, 80);
     }
 
-    // NO button dodge logic (stays inside the card)
+    // Move No button somewhere else inside the card (confined to the white rectangle)
     function dodge() {
       const rect = card.getBoundingClientRect();
       const pad = 18;
@@ -246,36 +253,52 @@
       const maxX = rect.width - noBtn.offsetWidth - pad;
       const maxY = rect.height - noBtn.offsetHeight - pad;
 
-      const minY = 120; // keeps it away from the headline area
+      // keep away from title/text area
+      const minY = 120;
       const minX = pad;
 
       const x = Math.max(minX, Math.random() * maxX);
       const y = Math.max(minY, Math.random() * maxY);
 
-      noBtn.classList.add("dodge");
       noBtn.style.left = x + "px";
       noBtn.style.top = y + "px";
-      noBtn.style.transform = "translate(0,0)";
     }
 
-    // Start normal for a moment, then arm dodge mode
+    // Arm dodge mode ONLY when the user tries to tap/click No
     let dodgeArmed = false;
-    setTimeout(() => {
-      dodgeArmed = true;
-      noBtn.classList.add("dodge");
-      dodge();
-    }, 1100);
 
-    // Desktop hover/click
-    noBtn.addEventListener("mouseenter", () => { if (dodgeArmed) dodge(); });
-    noBtn.addEventListener("mousedown", () => { if (dodgeArmed) dodge(); });
+    function armAndDodge(e) {
+      // Prevent "ghost clicks" after touch on mobile
+      if (e && e.type === "touchstart") e.preventDefault();
 
-    // Mobile touch: dodge when they try to tap it
-    noBtn.addEventListener("touchstart", (e) => {
-      if (!dodgeArmed) return;
-      e.preventDefault();
+      // First attempt: switch to absolute positioning but keep it at its current spot
+      if (!dodgeArmed) {
+        dodgeArmed = true;
+
+        const cardRect = card.getBoundingClientRect();
+        const btnRect = noBtn.getBoundingClientRect();
+
+        const left = btnRect.left - cardRect.left;
+        const top  = btnRect.top  - cardRect.top;
+
+        noBtn.classList.add("dodge");
+        noBtn.style.left = left + "px";
+        noBtn.style.top  = top + "px";
+      }
+
+      // Then jump away
       dodge();
-    }, { passive: false });
+    }
+
+    // Desktop: if they try to click No, it jumps
+    noBtn.addEventListener("mousedown", armAndDodge);
+
+    // Mobile: if they try to tap No, it jumps
+    noBtn.addEventListener("touchstart", armAndDodge, { passive: false });
+
+    // Optional: keep it stable on hover (mobile has no hover anyway)
+    // If you WANT it to dodge on hover too after it's armed, uncomment:
+    // noBtn.addEventListener("mouseenter", () => { if (dodgeArmed) dodge(); });
 
     // YES: date menu + SMS button
     yesBtn.addEventListener("click", () => {
@@ -318,9 +341,7 @@
           const selected = document.querySelector('input[name="date"]:checked');
           const choice = selected ? selected.value : "a date";
 
-          const smsMessage =
-            `I choose: ${choice}\n\n(Yes, I officially clicked YES.)`;
-
+          const smsMessage = `I choose: ${choice}\n\n(Yes, I officially clicked YES.)`;
           const smsLink = buildSmsLink(smsMessage);
 
           finalMsg.style.display = "block";
