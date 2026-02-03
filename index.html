@@ -24,9 +24,9 @@
       box-shadow: 0 14px 40px rgba(0,0,0,0.12);
       padding: 28px;
       text-align: center;
-      position: relative; /* keeps No button inside card when absolute */
+      position: relative; /* No button will be positioned relative to this */
       backdrop-filter: blur(6px);
-      overflow: hidden;   /* extra safety so nothing escapes visually */
+      overflow: hidden;   /* keeps the No button visually contained */
     }
 
     h1 { margin: 0 0 10px; font-size: 34px; }
@@ -57,10 +57,11 @@
     #yesBtn { background: #ff3b7a; color: #fff; }
     #noBtn  { background: #e9e9ef; color: #111; }
 
-    /* No button becomes absolute ONLY after first touch/click */
+    /* No becomes absolute only after the first touch/click */
     #noBtn.dodge {
       position: absolute;
       transform: translate(0,0);
+      z-index: 5; /* ensures it stays above other elements */
     }
 
     .hearts {
@@ -202,7 +203,7 @@
   <script>
     // ========= CHANGE THIS =========
     // Use country code. Example: +17025551234
-    const YOUR_PHONE = "+1PUT_YOUR_NUMBER_HERE";
+    const YOUR_PHONE = "+17024692757";
     // ===============================
 
     const card = document.getElementById("card");
@@ -271,22 +272,27 @@
       // Prevent "ghost clicks" after touch on mobile
       if (e && e.type === "touchstart") e.preventDefault();
 
-      // First attempt: switch to absolute positioning but keep it at its current spot
       if (!dodgeArmed) {
         dodgeArmed = true;
 
+        // Measure current position BEFORE moving the button in the DOM
         const cardRect = card.getBoundingClientRect();
         const btnRect = noBtn.getBoundingClientRect();
 
         const left = btnRect.left - cardRect.left;
         const top  = btnRect.top  - cardRect.top;
 
+        // IMPORTANT FIX:
+        // Move the No button under the card so its absolute positioning
+        // is relative to the card (not the button row).
+        card.appendChild(noBtn);
+
         noBtn.classList.add("dodge");
         noBtn.style.left = left + "px";
         noBtn.style.top  = top + "px";
       }
 
-      // Then jump away
+      // Then jump away (still inside the card)
       dodge();
     }
 
@@ -295,10 +301,6 @@
 
     // Mobile: if they try to tap No, it jumps
     noBtn.addEventListener("touchstart", armAndDodge, { passive: false });
-
-    // Optional: keep it stable on hover (mobile has no hover anyway)
-    // If you WANT it to dodge on hover too after it's armed, uncomment:
-    // noBtn.addEventListener("mouseenter", () => { if (dodgeArmed) dodge(); });
 
     // YES: date menu + SMS button
     yesBtn.addEventListener("click", () => {
