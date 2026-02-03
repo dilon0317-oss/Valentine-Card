@@ -32,6 +32,8 @@
       justify-content: center;
       gap: 14px;
       flex-wrap: wrap;
+      position: relative;
+      min-height: 52px;
     }
     button {
       border: none;
@@ -49,7 +51,7 @@
     #noBtn.dodge {
       position: absolute;
       left: 50%;
-      top: 70%;
+      top: 50%;
       transform: translate(-50%, -50%);
     }
 
@@ -89,19 +91,69 @@
       text-align: center;
       box-shadow: 0 18px 60px rgba(0,0,0,0.35);
     }
+
+    /* We keep the image element but we will hide it for the date picker version */
     .modal img {
       width: 100%;
       max-height: 70vh;
       object-fit: contain;
       border-radius: 14px;
       border: 1px solid rgba(0,0,0,0.08);
+      display: none;
     }
+
     .modal h2 { margin: 12px 0 6px; }
-    .modal small { opacity: 0.75; }
-    .closeRow { margin-top: 12px; display: flex; justify-content: center; gap: 10px; }
+    .modal small { opacity: 0.9; display: block; }
+
+    .closeRow { margin-top: 14px; display: flex; justify-content: center; gap: 10px; flex-wrap: wrap; }
     .closeRow button { background: #111; color: #fff; }
-    .closeRow a button { background: #ff3b7a; }
     a { text-decoration: none; }
+
+    /* Mini menu styles */
+    .menuWrap {
+      text-align: left;
+      max-width: 560px;
+      margin: 10px auto 0;
+      background: rgba(255, 59, 122, 0.06);
+      border: 1px solid rgba(255, 59, 122, 0.18);
+      border-radius: 14px;
+      padding: 14px;
+    }
+    .menuTitle {
+      font-weight: 700;
+      margin-bottom: 10px;
+    }
+    .menuItem {
+      display: flex;
+      gap: 10px;
+      align-items: flex-start;
+      margin: 10px 0;
+      padding: 10px 10px;
+      border-radius: 12px;
+      background: rgba(255,255,255,0.85);
+      border: 1px solid rgba(0,0,0,0.06);
+    }
+    .menuItem input { margin-top: 3px; }
+    .menuItem span { line-height: 1.25; }
+
+    .confirmBtn {
+      margin-top: 12px;
+      width: 100%;
+      border: none;
+      border-radius: 999px;
+      padding: 12px 16px;
+      font-size: 16px;
+      cursor: pointer;
+      background: #ff3b7a;
+      color: #fff;
+    }
+    .finalMsg {
+      margin-top: 12px;
+      padding: 12px;
+      border-radius: 12px;
+      background: rgba(0,0,0,0.04);
+      border: 1px solid rgba(0,0,0,0.06);
+    }
   </style>
 </head>
 <body>
@@ -109,7 +161,7 @@
     <div class="hearts" id="hearts"></div>
 
     <h1>Will you be my Valentine? 💘</h1>
-    <p>I have prepared a very serious, extremely professional website to ask you this.</p>
+    <p>I made a very serious, extremely professional website to ask you this.</p>
 
     <div class="buttons">
       <button id="yesBtn">Yes</button>
@@ -120,13 +172,11 @@
   <div class="overlay" id="overlay">
     <div class="modal">
       <img id="funnyImg" alt="Surprise" />
-      <h2>Yayyyyy 💖</h2>
-      <small>Best choice ever made in the history of choices.</small>
+      <h2 id="modalTitle">Yayyyyy 💖</h2>
+      <small id="modalBody">Best choice ever made in the history of choices.</small>
+
       <div class="closeRow">
         <button id="closeBtn">Close</button>
-        <a id="openLink" target="_blank" rel="noreferrer">
-          <button>Open surprise in new tab</button>
-        </a>
       </div>
     </div>
   </div>
@@ -138,12 +188,10 @@
     const hearts = document.getElementById("hearts");
     const overlay = document.getElementById("overlay");
     const closeBtn = document.getElementById("closeBtn");
-    const funnyImg = document.getElementById("funnyImg");
-    const openLink = document.getElementById("openLink");
 
-    // Put your surprise image here (any image URL works)
-    // Tip: upload a funny image to Imgur, or use a meme URL, or a GIF link.
-    const SURPRISE_IMAGE_URL = "https://media.giphy.com/media/v1.Y2lkPTc5MGI3NjExbG14d2Z4b2UzN2U3dDRyOHl0Z2I1bTQ0Y3RrZHZvN2R4bHdtbWl4aCZlcD12MV9naWZzX3NlYXJjaCZjdD1n/3o6Zt481isNVuQI1l6/giphy.gif";
+    const modalTitle = document.getElementById("modalTitle");
+    const modalBody = document.getElementById("modalBody");
+    const funnyImg = document.getElementById("funnyImg"); // kept, but hidden
 
     // Move the No button somewhere else inside the card
     function dodge() {
@@ -155,7 +203,7 @@
       const maxY = rect.height - noBtn.offsetHeight - pad;
 
       const x = Math.max(pad, Math.random() * maxX);
-      const y = Math.max(pad + 90, Math.random() * maxY); // avoid top title area
+      const y = Math.max(pad + 90, Math.random() * maxY); // avoids the title area
 
       noBtn.style.left = x + "px";
       noBtn.style.top = y + "px";
@@ -191,12 +239,66 @@
       }, 80);
     }
 
-    // Yes button opens surprise
+    // YES: show the choose-your-date menu (no GIF needed)
     yesBtn.addEventListener("click", () => {
       celebrate();
-      funnyImg.src = SURPRISE_IMAGE_URL;
-      openLink.href = SURPRISE_IMAGE_URL;
+
+      // Hide image for this version
+      funnyImg.style.display = "none";
+      funnyImg.removeAttribute("src");
+
+      modalTitle.textContent = "You said YES 💘";
+      modalBody.innerHTML = `
+        <div class="menuWrap">
+          <div class="menuTitle">Pick our Valentine mission:</div>
+
+          <label class="menuItem">
+            <input type="radio" name="date" value="Dinner + dessert 🍝🍰" checked />
+            <span><b>Dinner + dessert</b><br/>Food coma together. Romantic. Responsible.</span>
+          </label>
+
+          <label class="menuItem">
+            <input type="radio" name="date" value="Movie night + blankets 🎬🧺" />
+            <span><b>Movie night + blankets</b><br/>Cozy mode. I will share snacks (probably).</span>
+          </label>
+
+          <label class="menuItem">
+            <input type="radio" name="date" value="Snacks + a walk + yapping time 🍿🚶" />
+            <span><b>Snacks + a walk + yapping time</b><br/>Quality time, plus we get fresh air credits.</span>
+          </label>
+
+          <button id="confirmDate" class="confirmBtn">Confirm my choice</button>
+
+          <div id="finalMsg" class="finalMsg" style="display:none;"></div>
+        </div>
+      `;
+
       overlay.style.display = "grid";
+
+      // Wire up the confirm button after the HTML is injected
+      setTimeout(() => {
+        const confirmBtn = document.getElementById("confirmDate");
+        const finalMsg = document.getElementById("finalMsg");
+
+        if (!confirmBtn || !finalMsg) return;
+
+        confirmBtn.addEventListener("click", () => {
+          const selected = document.querySelector('input[name="date"]:checked');
+          const choice = selected ? selected.value : "a date";
+
+          finalMsg.style.display = "block";
+          finalMsg.innerHTML = `
+            <b>Perfect.</b> I’m planning <b>${choice}</b> 😌💖<br><br>
+            I love you.
+          `;
+
+          confirmBtn.disabled = true;
+          confirmBtn.textContent = "Locked in ✅";
+          confirmBtn.style.opacity = "0.75";
+
+          celebrate();
+        });
+      }, 0);
     });
 
     closeBtn.addEventListener("click", () => overlay.style.display = "none");
@@ -204,7 +306,7 @@
       if (e.target === overlay) overlay.style.display = "none";
     });
 
-    // Give the No button an initial random position so it feels alive
+    // Give the No button an initial random position
     setTimeout(dodge, 250);
   </script>
 </body>
